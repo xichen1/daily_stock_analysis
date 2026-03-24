@@ -55,7 +55,15 @@ jobs:
       - name: 创建必要目录
         run: |
           mkdir -p data logs reports
-      
+
+      - name: 恢复分析数据库缓存
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: stock-analysis-db-${{ github.run_id }}
+          restore-keys: |
+            stock-analysis-db-
+
       - name: 执行股票分析
         env:
           # ==========================================
