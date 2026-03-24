@@ -55,7 +55,15 @@ jobs:
       - name: 创建必要目录
         run: |
           mkdir -p data logs reports
-      
+
+      - name: 恢复分析数据库缓存
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: stock-analysis-db-${{ github.run_id }}
+          restore-keys: |
+            stock-analysis-db-
+
       - name: 执行股票分析
         env:
           # ==========================================
@@ -270,7 +278,27 @@ jobs:
             reports/
             logs/
           retention-days: 30
-      
+
+      - name: 导出报告数据为 JSON
+        run: python scripts/export_reports_json.py
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/dsa-web/package-lock.json
+
+      - name: 构建前端
+        run: cd apps/dsa-web && npm ci && npm run build
+
+      - name: 部署到 Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy static --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'daily-stock-analysis' }} --commit-dirty=true
+
       - name: 显示运行结果
         if: always()
         run: |
