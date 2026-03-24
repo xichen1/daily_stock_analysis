@@ -270,7 +270,31 @@ jobs:
             reports/
             logs/
           retention-days: 30
-      
+
+      - name: 导出报告数据为 JSON
+        if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: python scripts/export_reports_json.py
+
+      - name: 设置 Node.js 环境
+        if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/dsa-web/package-lock.json
+
+      - name: 构建前端
+        if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: cd apps/dsa-web && npm ci && npm run build
+
+      - name: 部署到 Cloudflare Pages
+        if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' || secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy static --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT || 'daily-stock-analysis' }} --commit-dirty=true
+
       - name: 显示运行结果
         if: always()
         run: |
